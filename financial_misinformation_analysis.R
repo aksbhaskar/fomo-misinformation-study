@@ -54,7 +54,7 @@ cat("Missing FOMO scores:", sum(is.na(df$fomo)), "\n")
 # ============================================================
 # APPROACH A: Person-level aggregation
 # One row per respondent, averaged across the 5 vignettes.
-# N = number of respondents, which matches the 200-300 target directly.
+# N = number of respondents (300 collected).
 # ============================================================
 
 df_person <- df %>%
