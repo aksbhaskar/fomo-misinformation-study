@@ -1,0 +1,15 @@
+# Data: ignore everything under data/ except README files
+/data/**
+!/data/**/
+!/data/**/README.md
+
+# R artifacts
+.Rhistory
+.RData
+.Rproj.user/
+.Ruserdata
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
