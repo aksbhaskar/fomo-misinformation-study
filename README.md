@@ -18,6 +18,8 @@ This study asks whether two personality traits, conscientiousness and fear of mi
 | `data/processed/` | Cleaned analysis datasets (not public; contents are gitignored) |
 | `outputs/` | Tables and figures produced by the analysis scripts |
 
+To recreate the R environment, open R in the project folder and run `renv::restore()`.
+
 ## Data availability
 
 Raw data are not publicly available, to protect participant privacy.
