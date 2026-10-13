@@ -188,12 +188,19 @@ domains <- list(
 for (dom in names(domains)) d[[dom]] <- rowMeans(scored[domains[[dom]]])
 d$fomo <- rowMeans(scored[fomo_items])
 
+# Acquiescence-corrected domain scores (robustness check 7): each person's 15
+# raw BFI-2-XS items are centered on their own mean, reverse-keyed items are
+# multiplied by -1, and each domain is the mean of its three centered items.
+centered <- d[bfi_items] - rowMeans(d[bfi_items])
+centered[reverse_items] <- -centered[reverse_items]
+for (dom in names(domains)) d[[paste0(dom, "_acq")]] <- rowMeans(centered[domains[[dom]]])
+
 d$participant_id <- seq_len(n_final)
 
 
 # ---- 9. Save the analysis datasets --------------------------------------------
 
-trait_scores <- c(names(domains), "fomo")
+trait_scores <- c(names(domains), "fomo", paste0(names(domains), "_acq"))
 covariates   <- c("age", "gender", "invested")
 
 # Item columns are saved as answered (before reverse-scoring).
