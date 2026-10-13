@@ -45,6 +45,14 @@ Item numbers refer to the order in which items appeared in the survey (see [`sur
 
 Higher scores indicate more of the trait. For Negative Emotionality, a higher score means more negative emotionality; item 14 ("emotionally stable") is reversed for that reason.
 
+### Note on reliability in non-WEIRD samples
+
+Big Five inventories have shown low reliability and validity in non-WEIRD (non-Western, educated, industrialized, rich, democratic) populations, with acquiescent responding identified as a contributing factor:
+
+Laajaj, R., Macours, K., Pinzon Hernandez, D. A., Arias, O., Gosling, S. D., Potter, J., Rubio-Codina, M., & Vakis, R. (2019). Challenges to capture the big five personality traits in non-WEIRD populations. *Science Advances, 5*(7), eaaw5226. https://doi.org/10.1126/sciadv.aaw5226
+
+Diagnostics for this study's sample are in [`outputs/measurement-check.md`](../outputs/measurement-check.md).
+
 ---
 
 ## Fear of Missing Out Scale (FoMOs)
