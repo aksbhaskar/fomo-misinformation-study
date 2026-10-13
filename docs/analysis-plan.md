@@ -4,7 +4,7 @@ Written 12 October 2026, after data collection closed (n = 300) and before any o
 
 ## Background and provenance
 
-This study extends Lawson and Kakkar's work on conscientiousness and fake-news sharing to financial misinformation, replacing political ideology with Fear of Missing Out (FOMO) as the domain-specific motivational trait. An earlier version of the analysis approach (measures and a mixed-effects model with ratings nested within participants) was drafted on 1 August 2026, shortly after recruitment began, and is preserved in docs/archive/; the use of a mixed-effects model was also recommended by the faculty advisor on 30 July 2026. That earlier version did not specify hypotheses or exclusion rules; both are specified here for the first time.
+This study extends Lawson and Kakkar's work on conscientiousness and fake-news sharing to financial misinformation, replacing political ideology with Fear of Missing Out (FOMO) as the domain-specific motivational trait. An earlier version of the analysis approach (measures and a mixed-effects model with ratings nested within participants) was drafted on 1 August 2026, shortly after recruitment began, and is preserved in docs/archive/; the use of a mixed-effects model was also recommended on 30 July 2026 by Professor Hemant Kakkar, who is guiding this project. That earlier version did not specify hypotheses or exclusion rules; both are specified here for the first time.
 
 ## Hypotheses and research questions
 
@@ -101,4 +101,4 @@ Clearly labelled as exploratory in any write-up:
 
 ## Deviations
 
-None yet. Any departure from this plan after the data are opened will be listed here with its date and reason.
+12 October 2026: The opening line of this plan gives n = 300, which was the recruitment target reached when Professor Hemant Kakkar was updated on 30 September 2026. The form remained open after that update. Before export, two edits were made to the response sheet: rows from respondents reporting an age under 18 were deleted (the number of rows was not recorded), and the Timestamp column was removed. No other edits were made, and only the age column was viewed while removing rows. The form and response sheet were subsequently deleted, so the exact end date of data collection is approximate (October 2026) and duplicate detection relies on item responses only. The exported file contains 311 submissions, all of which enter the exclusion steps; the analytic N is reported in outputs/exclusions.md. The SHA-256 checksum of the analysed raw file is recorded there. No outcome data had been examined when this note was added. Any departure from this plan after the data are opened will be listed here with its date and reason.
