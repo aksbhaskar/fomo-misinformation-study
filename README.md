@@ -27,3 +27,7 @@ Raw data are not publicly available, to protect participant privacy.
 ## License
 
 Code is released under the [MIT License](LICENSE). Original survey materials (the five vignettes, demographic items, and study instructions) are licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). The BFI-2-XS and FOMO scale items are reproduced in `materials/` for documentation and remain subject to their original authors' terms.
+
+## Acknowledgments
+
+Thanks to Professor Hemant Kakkar (Indian School of Business), advisor on this project, for guidance on the study design and analysis.

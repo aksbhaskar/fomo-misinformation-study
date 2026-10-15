@@ -100,3 +100,68 @@ Counts of each response (1 = Disagree strongly, 5 = Agree strongly), raw.
 | Negative Emotionality | -0.22 | [-0.32, -0.11] | 0.00013 |
 | FOMO | -0.17 | [-0.27, -0.06] | 0.0033 |
 
+## Follow-up checks (15 October 2026)
+
+### A1. Column alignment by header text
+
+Each trait column in the raw export was matched to the instrument (`materials/survey-instrument.md`) by its header text rather than its position. Misaligned columns: 0 of 25.
+
+| Variable | Raw header | Matched instrument item | Correct |
+|---|---|---|---|
+| bfi_01 | [Tends to be quiet.] | BFI 1 | yes |
+| bfi_02 | [Is compassionate, has a soft heart.] | BFI 2 | yes |
+| bfi_03 | [Tends to be disorganized.] | BFI 3 | yes |
+| bfi_04 | [Worries a lot.] | BFI 4 | yes |
+| bfi_05 | [Is fascinated by art, music, or literature.] | BFI 5 | yes |
+| bfi_06 | [Is dominant, acts as a leader.] | BFI 6 | yes |
+| bfi_07 | [Is sometimes rude to others.] | BFI 7 | yes |
+| bfi_08 | [Has difficulty getting started on tasks.] | BFI 8 | yes |
+| bfi_09 | [Tends to feel depressed, blue.] | BFI 9 | yes |
+| bfi_10 | [Has little interest in abstract ideas.] | BFI 10 | yes |
+| bfi_11 | [Is full of energy.] | BFI 11 | yes |
+| bfi_12 | [Assumes the best about people.] | BFI 12 | yes |
+| bfi_13 | [Is reliable, can always be counted on.] | BFI 13 | yes |
+| bfi_14 | [Is emotionally stable, not easily upset.] | BFI 14 | yes |
+| bfi_15 | [Is original, comes up with new ideas.] | BFI 15 | yes |
+| fomo_01 | [I fear others have more rewarding experiences than me.] | FOMO 1 | yes |
+| fomo_02 | [I fear my friends have more rewarding experiences than me.] | FOMO 2 | yes |
+| fomo_03 | [I get worried when I find out my friends are having fun without me.] | FOMO 3 | yes |
+| fomo_04 | [I get anxious when I don't know what my friends are up to.] | FOMO 4 | yes |
+| fomo_05 | [It is important that I understand my friends' "in jokes."] | FOMO 5 | yes |
+| fomo_06 | [Sometimes, I wonder if I spend too much time keeping up with what is going on.] | FOMO 6 | yes |
+| fomo_07 | [It bothers me when I miss an opportunity to meet up with friends.] | FOMO 7 | yes |
+| fomo_08 | [When I have a good time it is important for me to share the details online (e.g. updating status).] | FOMO 8 | yes |
+| fomo_09 | [When I miss out on a planned get-together it bothers me.] | FOMO 9 | yes |
+| fomo_10 | [When I go on vacation, I continue to keep tabs on what my friends are doing.] | FOMO 10 | yes |
+
+### A2. Import check
+
+All 7775 trait values (311 participants x 25 items) in `data/processed/participants.csv` are identical to the raw export before scoring: 7775 of 7775 match. Five randomly selected rows were also compared by eye; they are not reproduced here, to avoid publishing participant-level responses.
+
+### A3. Scoring key
+
+Keys read directly from `analysis/01_clean.R`, compared with the published BFI-2-XS key (Soto & John, 2017; R = reverse-keyed).
+
+| Domain | 01_clean.R | Published key | Match |
+|---|---|---|---|
+| Extraversion | 1R, 6, 11 | 1R, 6, 11 | yes |
+| Agreeableness | 2, 7R, 12 | 2, 7R, 12 | yes |
+| Conscientiousness | 3R, 8R, 13 | 3R, 8R, 13 | yes |
+| Negative Emotionality | 4, 9, 14R | 4, 9, 14R | yes |
+| Open-Mindedness | 5, 10R, 15 | 5, 10R, 15 | yes |
+
+### B. Reliability by group
+
+Cronbach's alpha with percentile bootstrap 95% CIs (2,000 resamples). The middle column is the average of the five BFI-2-XS domain alphas.
+
+| Grouping | Group | n | Conscientiousness alpha | Mean of five BFI domain alphas | FOMO alpha |
+|---|---|---|---|---|---|
+| Full sample | All | 311 | 0.15 [-0.02, 0.28] | 0.13 [0.05, 0.20] | 0.82 [0.79, 0.85] |
+| Age group | 18-24 |  67 | 0.29 [-0.00, 0.49] | 0.21 [0.01, 0.32] | 0.85 [0.75, 0.90] |
+| Age group | 25-34 | 182 | 0.11 [-0.13, 0.31] | 0.10 [-0.02, 0.20] | 0.81 [0.76, 0.85] |
+| Age group | 35 and over |  62 | 0.08 [-0.38, 0.36] | 0.08 [-0.14, 0.22] | 0.81 [0.69, 0.88] |
+| Gender | Female | 126 | 0.26 [0.03, 0.42] | 0.28 [0.17, 0.36] | 0.76 [0.66, 0.82] |
+| Gender | Male | 185 | 0.03 [-0.23, 0.24] | 0.02 [-0.10, 0.12] | 0.85 [0.81, 0.88] |
+| Invested before | No | 229 | 0.19 [0.01, 0.35] | 0.14 [0.03, 0.22] | 0.81 [0.77, 0.84] |
+| Invested before | Yes |  82 | 0.04 [-0.33, 0.28] | 0.06 [-0.13, 0.19] | 0.84 [0.77, 0.89] |
+
