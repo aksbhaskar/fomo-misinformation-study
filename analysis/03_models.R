@@ -10,8 +10,13 @@
 #   UNBLIND <- TRUE   Real ratings are used. Outputs go to outputs/results/.
 #
 # Run from the project root: Rscript analysis/03_models.R
+# In simulated mode, `Rscript analysis/03_models.R floor` simulates share
+# ratings concentrated at 1, to test the outcome-suitability rule.
 
 UNBLIND <- FALSE
+
+args <- commandArgs(trailingOnly = TRUE)
+SIM_SCENARIO <- if (length(args) && args[1] == "floor") "floor" else "default"   # simulated mode only
 
 
 # ---- Settings -------------------------------------------------------------------
@@ -28,14 +33,17 @@ sens_nsim  <- if (UNBLIND) 500 else 5
 if (UNBLIND) {
   out_dir <- "outputs/results"
 } else {
-  out_dir <- file.path(dirname(tempdir()), "fomo-misinformation-simulated-outputs")
+  out_dir <- file.path(dirname(tempdir()), paste0("fomo-misinformation-simulated-outputs",
+                                                  if (SIM_SCENARIO == "floor") "-floor" else ""))
   if (startsWith(normalizePath(out_dir, mustWork = FALSE), normalizePath("."))) {
     stop("Simulated outputs must be written outside the repository.")
   }
 }
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-mode_label <- if (UNBLIND) "REAL DATA" else "SIMULATED DATA (outcomes are not real)"
+mode_label <- if (UNBLIND) "REAL DATA" else
+  sprintf("SIMULATED DATA (outcomes are not real; scenario: %s)", SIM_SCENARIO)
+expl <- "EXPLORATORY"
 cat("Mode:", mode_label, "\nOutputs:", normalizePath(out_dir), "\n\n")
 
 
@@ -134,6 +142,8 @@ sim_truth <- list(
   share = c(intercept = 3.5, consc_z = -0.25, fomo_z = 0.30, `consc_z:fomo_z` = -0.20),
   truth = c(intercept = 3.0, consc_z = -0.15, fomo_z = 0.20, `consc_z:fomo_z` = -0.10)
 )
+# The "floor" scenario lowers the share intercept so most ratings are 1.
+if (SIM_SCENARIO == "floor") sim_truth$share[["intercept"]] <- 0.5
 sim_vignette_effects <- c(0.4, 0.1, -0.2, 0.0, -0.3)   # sum to zero
 sim_sd_person <- 0.8
 sim_sd_resid  <- 1.0
@@ -160,6 +170,44 @@ if (UNBLIND) {
 long$vignette <- factor(long$vignette, levels = 1:5)
 contrasts(long$vignette) <- contr.sum(5)
 long$participant_id <- factor(long$participant_id)
+
+
+# ---- Outcome suitability (runs before any model) ---------------------------------
+# Rule set before unblinding (Deviations, 15 October 2026): if more than 50% of
+# all share-likelihood ratings equal 1, the cumulative link mixed model
+# (robustness check 1) is the primary estimate for H1.
+
+cronbach_alpha <- function(m) {
+  m <- as.matrix(m); k <- ncol(m)
+  (k / (k - 1)) * (1 - sum(apply(m, 2, var)) / var(rowSums(m)))
+}
+
+share_wide <- sapply(levels(long$vignette), function(v) {
+  rows <- long$vignette == v
+  long$share[rows][order(long$participant_id[rows])]
+})
+prop_ones <- mean(long$share == 1)
+h1_primary <- if (prop_ones > 0.5) "clmm" else "lmer"
+h1_primary_label <- if (h1_primary == "clmm") {
+  "Cumulative link mixed model (robustness check 1)"
+} else {
+  "Linear mixed model (primary model)"
+}
+
+suitability <- do.call(rbind, lapply(c("All", levels(long$vignette)), function(v) {
+  x <- if (v == "All") long$share else long$share[long$vignette == v]
+  counts <- as.vector(table(factor(x, levels = 1:7)))
+  setNames(data.frame(v, length(x), 100 * mean(x == 1), t(counts)),
+           c("vignette", "n_ratings", "percent_equal_1", as.character(1:7)))
+}))
+alpha_share <- cronbach_alpha(share_wide)
+save_table(suitability, "table_00_outcome_suitability",
+           "Outcome suitability: share-likelihood ratings",
+           notes = c(sprintf("%.1f%% of all share-likelihood ratings equal 1 (rule threshold: more than 50%%).", 100 * prop_ones),
+                     sprintf("Cronbach's alpha across each participant's five share ratings: %.2f.", alpha_share),
+                     sprintf("Primary estimate for H1: %s.", h1_primary_label)))
+cat(sprintf("Outcome suitability: %.1f%% of share ratings equal 1 -> primary model for H1: %s\n\n",
+            100 * prop_ones, h1_primary_label))
 
 # Person-level outcome means (used in descriptives and robustness check 4).
 person_means <- aggregate(cbind(mean_share = share, mean_truth = truth) ~ participant_id,
@@ -210,13 +258,13 @@ reliability <- do.call(rbind, lapply(strsplit(rel_rows, "\\|"), function(cells) 
   data.frame(scale = cells[1], items = as.integer(cells[2]),
              alpha = as.numeric(cells[3]), omega = as.numeric(cells[4]), note = cells[5])
 }))
-save_table(reliability, "table_04_reliability", "Scale reliabilities",
+save_table(reliability, "table_04_reliability", "Scale reliabilities (conscientiousness: EXPLORATORY)",
            notes = "Read from outputs/measurement-check.md.")
 
 cor_vars <- c("conscientiousness", "conscientiousness_acq", "fomo", "age", "mean_share", "mean_truth")
 cor_mat <- cor(p[cor_vars])
 cor_table <- data.frame(variable = cor_vars, round(cor_mat, 3), row.names = NULL, check.names = FALSE)
-save_table(cor_table, "table_05_correlations", "Person-level correlations (Pearson r)")
+save_table(cor_table, "table_05_correlations", "Person-level correlations (Pearson r); correlations involving conscientiousness are EXPLORATORY")
 
 # Outcome distribution figures.
 for (o in c("share", "truth")) {
@@ -238,7 +286,9 @@ primary_tab$estimate_per_outcome_sd <- ifelse(primary_tab$term == "(Intercept)",
                                               primary_tab$estimate / sd(long$share))
 r2_primary <- fit_logged("primary R2", performance::r2_nakagawa(m_primary))
 save_table(primary_tab, "table_06_primary_model",
-           "Primary model: share ~ conscientiousness x FOMO + vignette + (1 | participant)",
+           paste0("Primary model: share ~ conscientiousness x FOMO + vignette + (1 | participant). ",
+                  if (h1_primary == "lmer") "FOMO coefficient = PRIMARY H1 TEST" else "FOMO coefficient = H1 robustness estimate (outcome rule selected the ordinal model)",
+                  "; conscientiousness terms EXPLORATORY"),
            notes = c("REML; Satterthwaite degrees of freedom; 95% CIs. Predictors are z-scored at the person level; vignette is sum-coded.",
                      sprintf("Marginal R2 = %.3f; conditional R2 = %.3f (Nakagawa and Schielzeth).",
                              r2_primary$R2_marginal, r2_primary$R2_conditional)))
@@ -261,7 +311,7 @@ simple_slopes <- data.frame(conscientiousness = c("-1 SD", "Mean", "+1 SD"),
                             statistic = ss$`t value`, p = ss$`Pr(>|t|)`,
                             ci_low = ss$lower, ci_high = ss$upper)
 save_table(simple_slopes, "table_07_simple_slopes",
-           "Simple slopes of FOMO on share-likelihood at three levels of conscientiousness",
+           "EXPLORATORY: Simple slopes of FOMO on share-likelihood at three levels of conscientiousness",
            notes = "Probed regardless of significance; interpreted only if the interaction is significant.")
 
 # Johnson-Neyman interval: values of conscientiousness (z) at which the FOMO
@@ -296,7 +346,7 @@ jn_table <- data.frame(
   value = c(if (length(roots)) roots else c(NA, NA), obs_range,
             mean((qa * p$consc_z^2 + qb * p$consc_z + qc) > 0), df_jn)
 )
-save_table(jn_table, "table_08_johnson_neyman", "Johnson-Neyman interval for the FOMO slope",
+save_table(jn_table, "table_08_johnson_neyman", "EXPLORATORY: Johnson-Neyman interval for the FOMO slope",
            notes = jn_description)
 
 # Predicted share across FOMO at the three conscientiousness levels (vignette
@@ -318,7 +368,7 @@ png(file.path(out_dir, "fig_interaction_share.png"), width = 1800, height = 1300
 cols <- c("#B2182B", "grey35", "#2166AC")
 plot(NA, xlim = range(fomo_grid), ylim = range(pred$ci_low, pred$ci_high),
      xlab = "FOMO (z)", ylab = "Predicted share-likelihood (1-7)",
-     main = "Predicted share-likelihood by FOMO and conscientiousness",
+     main = "EXPLORATORY: Predicted share-likelihood by FOMO and conscientiousness",
      sub = if (!UNBLIND) "SIMULATED DATA" else "")
 for (i in seq_along(levels_c)) {
   d_i <- pred[pred$consc_level == levels_c[i], ]
@@ -337,7 +387,7 @@ m_secondary <- fit_logged("secondary", lmerTest::lmer(
   truth ~ consc_z * fomo_z + vignette + (1 | participant_id), data = long, REML = TRUE))
 r2_secondary <- fit_logged("secondary R2", performance::r2_nakagawa(m_secondary))
 save_table(tidy_fit(m_secondary), "table_09_secondary_model",
-           "Secondary model: truth ~ conscientiousness x FOMO + vignette + (1 | participant)",
+           "Secondary model (RQ2): truth ~ conscientiousness x FOMO + vignette + (1 | participant). FOMO coefficient = secondary test; conscientiousness terms EXPLORATORY",
            notes = sprintf("Marginal R2 = %.3f; conditional R2 = %.3f.",
                            r2_secondary$R2_marginal, r2_secondary$R2_conditional))
 
@@ -370,30 +420,45 @@ robust <- list(
             fit = fit_logged("robustness 6", lmerTest::lmer(f_primary, data = long_strict))),
   r7 = list(label = "7. Acquiescence-corrected conscientiousness",
             fit = fit_logged("robustness 7", lmerTest::lmer(
-              share ~ consc_acq_z * fomo_z + vignette + (1 | participant_id), data = long)))
+              share ~ consc_acq_z * fomo_z + vignette + (1 | participant_id), data = long))),
+  r8 = list(label = "8. FOMO-only model",
+            fit = fit_logged("robustness 8", lmerTest::lmer(
+              share ~ fomo_z + vignette + (1 | participant_id), data = long)))
 )
 
 for (k in names(robust)) {
   save_table(tidy_fit(robust[[k]]$fit), sprintf("table_10_robustness_%s", sub("r", "", k)),
-             paste("Robustness check", robust[[k]]$label))
+             paste0("Robustness check ", robust[[k]]$label,
+                    if (k == "r7") " (EXPLORATORY)" else if (k != "r8") " (conscientiousness terms EXPLORATORY)" else "",
+                    if (k == "r1" && h1_primary == "clmm") ". FOMO coefficient = PRIMARY H1 TEST (outcome rule)" else ""))
 }
 
-# Key coefficients across the primary model and all robustness checks.
-key_rows <- function(label, fit) {
+# Key coefficients across the primary model and all robustness checks. The
+# status column marks the primary H1 test (chosen by the outcome-suitability
+# rule); all conscientiousness terms are exploratory.
+key_rows <- function(label, fit, is_h1_primary) {
   t <- tidy_fit(fit)
   c_term <- if ("consc_acq_z" %in% t$term) "consc_acq_z" else "consc_z"
   terms <- c(Conscientiousness = c_term, FOMO = "fomo_z", Interaction = paste0(c_term, ":fomo_z"))
+  terms <- terms[terms %in% t$term]
   do.call(rbind, lapply(names(terms), function(nm) {
     r <- t[t$term == terms[[nm]], ]
-    data.frame(model = label, coefficient = nm, estimate = r$estimate,
+    status <- if (nm != "FOMO") expl else if (is_h1_primary) "PRIMARY H1 TEST" else "H1 robustness"
+    data.frame(model = label, coefficient = nm, status = status, estimate = r$estimate,
                ci_low = r$ci_low, ci_high = r$ci_high, p = r$p)
   }))
 }
-key_summary <- rbind(key_rows("Primary", m_primary),
-                     do.call(rbind, lapply(robust, function(r) key_rows(r$label, r$fit))))
+key_summary <- rbind(
+  key_rows("Primary", m_primary, h1_primary == "lmer"),
+  do.call(rbind, lapply(names(robust), function(k)
+    key_rows(robust[[k]]$label, robust[[k]]$fit, k == "r1" && h1_primary == "clmm")))
+)
 save_table(key_summary, "table_11_key_coefficients",
-           "Key coefficients: primary model and robustness checks 1-7",
-           notes = c("Check 1 is on the logit scale and is not directly comparable in size to the linear models.",
+           "Key coefficients: primary model and robustness checks 1-8",
+           notes = c(sprintf("PRIMARY H1 TEST: the FOMO coefficient in the %s, selected by the outcome-suitability rule (%.1f%% of share ratings equal 1; threshold 50%%).",
+                             tolower(h1_primary_label), 100 * prop_ones),
+                     "All conscientiousness and interaction terms are EXPLORATORY (Deviations, 15 October 2026).",
+                     "Check 1 is on the logit scale and is not directly comparable in size to the linear models.",
                      "Check 4 is at the person level (one row per participant)."))
 
 
@@ -419,7 +484,7 @@ sens_note <- if (length(detectable)) {
           max(sens$power), sens$interaction[which.max(sens$power)])
 }
 save_table(sens, "table_12_sensitivity",
-           "Sensitivity analysis: power to detect the conscientiousness x FOMO interaction",
+           "EXPLORATORY: Sensitivity analysis: power to detect the conscientiousness x FOMO interaction",
            notes = c(sprintf("Simulation-based (simr), N = %d, %d simulations per effect size, two-sided alpha = .05.",
                              nrow(p), sens_nsim),
                      "Interaction sizes are in rating-scale points per 1 SD of each predictor.",
@@ -429,7 +494,7 @@ save_table(sens, "table_12_sensitivity",
 png(file.path(out_dir, "fig_sensitivity_power.png"), width = 1600, height = 1100, res = 200)
 plot(sens$interaction, sens$power, type = "b", pch = 19, ylim = c(0, 1),
      xlab = "Interaction effect (rating points per SD x SD)", ylab = "Power",
-     main = "Sensitivity analysis", sub = if (!UNBLIND) "SIMULATED DATA - TEST RUN" else "")
+     main = "EXPLORATORY: Sensitivity analysis (interaction)", sub = if (!UNBLIND) "SIMULATED DATA - TEST RUN" else "")
 arrows(sens$interaction, sens$ci_low, sens$interaction, sens$ci_high,
        angle = 90, code = 3, length = 0.04)
 abline(h = 0.8, lty = 2)
@@ -458,7 +523,7 @@ save_table(tidy_fit(m_expl_b5), "exploratory_table_02_big_five",
 # ---- Run log and simulation check ------------------------------------------------
 
 singular <- sapply(c(list(primary = m_primary, secondary = m_secondary),
-                     lapply(robust[c("r2", "r3", "r5", "r6", "r7")], `[[`, "fit")),
+                     lapply(robust[c("r2", "r3", "r5", "r6", "r7", "r8")], `[[`, "fit")),
                    lme4::isSingular)
 
 run_log <- c(
@@ -468,7 +533,9 @@ run_log <- c(
   sprintf("R %s; lme4 %s; lmerTest %s; ordinal %s; simr %s; performance %s",
           getRversion(), packageVersion("lme4"), packageVersion("lmerTest"),
           packageVersion("ordinal"), packageVersion("simr"), packageVersion("performance")),
-  sprintf("N participants = %d; N ratings = %d", nrow(p), nrow(long)), "",
+  sprintf("N participants = %d; N ratings = %d", nrow(p), nrow(long)),
+  sprintf("Outcome suitability: %.1f%% of share ratings equal 1; primary model for H1: %s",
+          100 * prop_ones, h1_primary_label), "",
   "## Warnings and convergence messages", "",
   if (length(warning_log)) paste("-", unique(warning_log)) else "None.", "",
   "## Singular fits", "",
