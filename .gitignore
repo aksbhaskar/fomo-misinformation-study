@@ -8,6 +8,7 @@
 .RData
 .Rproj.user/
 .Ruserdata
+/outputs/cache/
 
 # OS files
 .DS_Store

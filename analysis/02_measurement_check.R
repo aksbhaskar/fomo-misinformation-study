@@ -10,6 +10,11 @@
 
 input_path  <- "data/processed/participants.csv"
 report_path <- "outputs/measurement-check.md"
+source("analysis/numerical_helpers.R")
+numerical_context <- cache_context(
+  c(input_path, "data/raw/responses_raw.csv", "materials/survey-instrument.md",
+    "analysis/01_clean.R", "analysis/02_measurement_check.R", "analysis/numerical_helpers.R"),
+  mode = "BLINDED TRAITS ONLY", settings = list(seed = 20261015, reps = 2000))
 
 bfi_items  <- sprintf("bfi_%02d", 1:15)
 fomo_items <- sprintf("fomo_%02d", 1:10)
@@ -225,10 +230,14 @@ group_alphas <- function(d) {
     fomo = cronbach_alpha(d[fomo_items]))
 }
 boot_ci <- function(d, reps = 2000) {
-  est <- group_alphas(d)
-  draws <- replicate(reps, group_alphas(d[sample(nrow(d), replace = TRUE), ]))
-  ci <- apply(draws, 1, quantile, probs = c(0.025, 0.975), na.rm = TRUE)
-  sprintf("%s [%s, %s]", fmt(est), fmt(ci[1, ]), fmt(ci[2, ]))
+  result <- cached_numerical(list(numerical_context, "group bootstrap", d, reps), {
+    matrices <- c(lapply(domains, function(items) as.matrix(keyed(items, d))),
+                  list(FOMO = as.matrix(d[fomo_items])))
+    est <- scale_alphas(matrices)
+    draws <- replicate(reps, scale_alphas(matrices, sample(nrow(d), replace = TRUE)))
+    list(est = est, ci = apply(draws, 1, quantile, probs = c(0.025, 0.975), na.rm = TRUE))
+  })
+  sprintf("%s [%s, %s]", fmt(result$est), fmt(result$ci[1, ]), fmt(result$ci[2, ]))
 }
 p$age_group <- cut(p$age, breaks = c(17, 24, 34, Inf), labels = c("18-24", "25-34", "35 and over"))
 groupings <- list(`Full sample` = rep("All", nrow(p)), `Age group` = p$age_group,

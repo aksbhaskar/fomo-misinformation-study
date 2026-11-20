@@ -29,6 +29,13 @@ diagnostics_path  <- "outputs/measurement-check.md"
 # in rating-scale points) and simulations per size.
 sens_grid  <- if (UNBLIND) seq(0.05, 0.40, by = 0.05) else c(0.10, 0.30)
 sens_nsim  <- if (UNBLIND) 500 else 5
+source("analysis/numerical_helpers.R")
+numerical_context <- cache_context(
+  c(participants_path, if (UNBLIND) ratings_path,
+    "analysis/03_models.R", "analysis/numerical_helpers.R"),
+  mode = list(unblind = UNBLIND, scenario = SIM_SCENARIO),
+  settings = list(effects = sens_grid, nsim = sens_nsim, seed = 20261013,
+                  REML = TRUE, optimizer = "package defaults", vignette = "contr.sum(5)"))
 
 if (UNBLIND) {
   out_dir <- "outputs/results"
@@ -55,7 +62,7 @@ warning_log <- character()
 # singularity messages.
 fit_logged <- function(label, expr) {
   withCallingHandlers(
-    expr,
+    cached_numerical(list(numerical_context, label, deparse(substitute(expr))), expr),
     warning = function(w) {
       warning_log <<- c(warning_log, paste0(label, ": ", conditionMessage(w)))
       invokeRestart("muffleWarning")
@@ -417,7 +424,10 @@ robust <- list(
               share ~ consc_z * fomo_z + (1 | participant_id) + (1 | vignette), data = long))),
   r6 = list(label = sprintf("6. Stricter screening (%d flagged%s)", n_flagged,
                             if (n_flagged == 0) "; identical to primary" else ""),
-            fit = fit_logged("robustness 6", lmerTest::lmer(f_primary, data = long_strict))),
+            fit = if (n_flagged == 0) {
+              warning_log <- c(warning_log, "robustness 6: reused primary fit and its diagnostics (no flagged participants)")
+              m_primary
+            } else fit_logged("robustness 6", lmerTest::lmer(f_primary, data = long_strict))),
   r7 = list(label = "7. Acquiescence-corrected conscientiousness",
             fit = fit_logged("robustness 7", lmerTest::lmer(
               share ~ consc_acq_z * fomo_z + vignette + (1 | participant_id), data = long))),
@@ -465,13 +475,17 @@ save_table(key_summary, "table_11_key_coefficients",
 # ---- Sensitivity analysis ---------------------------------------------------------
 
 m_lme4 <- fit_logged("sensitivity refit", lme4::lmer(f_primary, data = long, REML = TRUE))
-sens <- do.call(rbind, lapply(sens_grid, function(eff) {
-  mm <- m_lme4
-  bb <- lme4::fixef(mm); bb[[int_term]] <- eff
-  mm <- simr::`fixef<-`(mm, bb)
-  ps <- fit_logged(sprintf("sensitivity (interaction = %.2f)", eff),
-                   simr::powerSim(mm, test = simr::fixed(int_term, "t"),
-                                  nsim = sens_nsim, progress = FALSE, seed = 20261013))
+power_results <- cached_numerical(list(numerical_context, "power"),
+  power_effects(m_lme4, sens_grid, int_term, sens_nsim, seed = 20261013))
+sens <- do.call(rbind, lapply(seq_along(sens_grid), function(i) {
+  eff <- sens_grid[i]
+  result <- power_results[[i]]
+  label <- sprintf("sensitivity (interaction = %.2f)", eff)
+  conditions <- c(result$warnings,
+    grep("singular|converge|boundary", result$messages, ignore.case = TRUE, value = TRUE))
+  if (length(conditions)) warning_log <- c(warning_log, paste0(label, ": ", conditions))
+  if (!is.null(result$error)) stop(result$error)
+  ps <- result$value
   ci <- binom.test(ps$x, ps$n)$conf.int
   data.frame(interaction = eff, power = ps$x / ps$n, ci_low = ci[1], ci_high = ci[2],
              nsim = ps$n, sim_errors = nrow(ps$errors))

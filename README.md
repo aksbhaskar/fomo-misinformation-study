@@ -20,6 +20,17 @@ This study asks whether two personality traits, conscientiousness and fear of mi
 
 To recreate the R environment, open R in the project folder and run `renv::restore()`.
 
+Numerical fits, grouped bootstrap intervals and sensitivity simulations are cached
+in the gitignored `outputs/cache/`; reporting is regenerated each run. Set
+`FOMO_CACHE=false` to bypass caching. Keys include input file hashes, analysis
+code, blinding/scenario, model and simulation settings, RNG state and installed
+package versions; simulated and real-data results never share a key. Cached
+warnings/errors are retained and replayed. Treat the cache as private study data.
+Set `FOMO_POWER_WORKERS=1` for serial sensitivity simulations, or a positive
+integer to bound the PSOCK process pool (default: the smaller of the effect
+count and available cores minus one). Each effect retains the same simulation
+seed as the serial analysis; worker BLAS/OpenMP thread counts are limited to one.
+
 ## Data availability
 
 Raw data are not publicly available, to protect participant privacy.
