@@ -30,6 +30,8 @@ diagnostics_path  <- "outputs/measurement-check.md"
 sens_grid  <- if (UNBLIND) seq(0.05, 0.40, by = 0.05) else c(0.10, 0.30)
 sens_nsim  <- if (UNBLIND) 500 else 5
 source("analysis/numerical_helpers.R")
+# Cached fits skip the calls that would load these, but their methods are still needed.
+invisible(lapply(c("lme4", "lmerTest", "ordinal", "simr"), loadNamespace))
 numerical_context <- cache_context(
   c(participants_path, if (UNBLIND) ratings_path,
     "analysis/03_models.R", "analysis/numerical_helpers.R"),
@@ -475,8 +477,9 @@ save_table(key_summary, "table_11_key_coefficients",
 # ---- Sensitivity analysis ---------------------------------------------------------
 
 m_lme4 <- fit_logged("sensitivity refit", lme4::lmer(f_primary, data = long, REML = TRUE))
+power_workers <- resolve_power_workers(length(sens_grid))
 power_results <- cached_numerical(list(numerical_context, "power"),
-  power_effects(m_lme4, sens_grid, int_term, sens_nsim, seed = 20261013))
+  power_effects(m_lme4, sens_grid, int_term, sens_nsim, seed = 20261013, workers = power_workers))
 sens <- do.call(rbind, lapply(seq_along(sens_grid), function(i) {
   eff <- sens_grid[i]
   result <- power_results[[i]]
