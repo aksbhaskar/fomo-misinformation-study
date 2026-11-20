@@ -87,5 +87,6 @@ power_effects <- function(model, effects, term, nsim, seed, workers = NULL) {
   pool <- tryCatch(parallel::makePSOCKcluster(workers), error = function(e) NULL)
   if (is.null(pool)) return(lapply(effects, job, model = model, term = term, nsim = nsim, seed = seed))
   on.exit(parallel::stopCluster(pool), add = TRUE)
+  parallel::clusterCall(pool, function(paths) invisible(.libPaths(paths)), .libPaths())
   parallel::parLapply(pool, effects, job, model = model, term = term, nsim = nsim, seed = seed)
 }
