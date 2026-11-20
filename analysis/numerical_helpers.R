@@ -47,15 +47,16 @@ scale_alphas <- function(matrices, rows = seq_len(nrow(matrices[[1]]))) {
   c(consc = a[["Conscientiousness"]], mean_bfi = mean(a[seq_len(5)]), fomo = a[[6]])
 }
 
-power_effects <- function(model, effects, term, nsim, seed, workers = NULL) {
-  if (!length(effects)) return(list())
-  if (is.null(workers)) {
-    cores <- parallel::detectCores()
-    if (is.na(cores)) cores <- 2L
-    workers <- Sys.getenv("FOMO_POWER_WORKERS", max(1L, cores - 1L))
-  }
-  workers <- suppressWarnings(as.integer(workers))
+resolve_power_workers <- function(n_effects) {
+  cores <- parallel::detectCores()
+  if (is.na(cores)) cores <- 2L
+  workers <- suppressWarnings(as.integer(Sys.getenv("FOMO_POWER_WORKERS", max(1L, cores - 1L))))
   if (length(workers) != 1L || is.na(workers) || workers < 1L) stop("Invalid FOMO_POWER_WORKERS")
+  max(1L, min(workers, n_effects))
+}
+
+power_effects <- function(model, effects, term, nsim, seed, workers = resolve_power_workers(length(effects))) {
+  if (!length(effects)) return(list())
   workers <- min(workers, length(effects))
   model <- simr::`getData<-`(model, simr::getData(model))
   job <- function(eff, model, term, nsim, seed) {
